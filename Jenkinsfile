@@ -6,24 +6,18 @@ pipeline {
         IMAGE_TAG  = "${BUILD_NUMBER}"
     }
 
-    options {
-        skipDefaultCheckout()
-    }
-
     stages {
 
-        stage('Checkout Repo') {
+        stage('Checkout App Repo') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/chakri8991/devopsecom1.git'
+                    url: 'https://github.com/chakri8991/devops-app-repo.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('devops-app-repo') {
-                    sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
-                }
+                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
             }
         }
 
@@ -35,6 +29,15 @@ pipeline {
                     docker push $IMAGE_NAME:$IMAGE_TAG
                     '''
                 }
+            }
+        }
+
+        stage('Clone GitOps Repo') {
+            steps {
+                sh '''
+                rm -rf devops-gitops-repo
+                git clone https://github.com/chakri8991/devops-gitops-repo.git
+                '''
             }
         }
 
@@ -55,14 +58,16 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
+                    cd devops-gitops-repo
                     git config user.name "jenkins"
                     git config user.email "jenkins@ci.com"
-                    git add devops-gitops-repo/k8s-manifests/deployment.yaml
-                    git commit -m "Updated image to $IMAGE_TAG" || true
-                    git push https://$USER:$PASS@github.com/chakri8991/devopsecom1.git main
+                    git add k8s-manifests/deployment.yaml
+                    git commit -m "Update image to $IMAGE_TAG" || echo "No changes"
+                    git push https://$USER:$PASS@github.com/chakri8991/devops-gitops-repo.git main
                     '''
                 }
             }
         }
     }
 }
+
